@@ -25,5 +25,6 @@ globals().update(conf.build_config(
         'kombu.transport.librabbitmq',
         'kombu.utils',
         'kombu.transport.virtual.base',
+        'kombu.transport.tarantool',
     ],
 ))

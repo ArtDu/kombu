@@ -18,10 +18,7 @@ Connection string is in the following format:
     tarantool://TARANTOOL_ADDRESS[:PORT]
 
 """
-import os
 from queue import Empty
-
-from . import base
 from . import virtual
 from ..utils import cached_property
 
@@ -55,22 +52,28 @@ class Channel(virtual.Channel):
     def _new_queue(self, queue, **kwargs):
         if not self._has_queue(queue):
             self._create_queue(queue)
-        self.client.eval(f"queue.tube.{queue}.auto_delete = ...", (kwargs['auto_delete']))
+
+        self.client.eval(
+            "queue.tube.{}.auto_delete = ...".format(queue),
+            (kwargs['auto_delete']))
 
     def _has_queue(self, queue, **kwarg):
         return self.client.call("queue.tube", queue).data[0]
 
     def _is_auto_delete(self, queue):
-        return self.client.eval(f"return queue.tube.{queue}.auto_delete").data[0]
+        return self.client.eval(
+            "return queue.tube.{}.auto_delete".format(queue),
+        ).data[0]
 
     def _create_queue(self, queue_name):
-        self.client.eval("queue.create_tube(...)", (queue_name, 'fifottl'))
+        self.client.eval(
+            "queue.create_tube(...)", (queue_name, 'fifottl'))
 
-    # AttributeError: 'Channel' object has no attribute '_queue_bind'
+# AttributeError: 'Channel' object has no attribute '_queue_bind'
     def _queue_bind(self, *args):
         pass
 
-    # it's not a virtual base function, but it was needed to support fanout messaging
+    # it's not a virtual base func, but it was needed to support fanout
     def _put_fanout(self, exchange, message, routing_key=None, **kwargs):
         for queue in self._lookup(exchange, routing_key):
             self._put(queue, message)
@@ -80,12 +83,14 @@ class Channel(virtual.Channel):
         if 'expiration' in message['properties']:
             # kombu expiration in ms, but tarantool get seconds
             ttl = int(message['properties']['expiration']) / 1000
+
+        cmd = 'return queue.tube.{0}:put(...,{{pri={1},ttl={2}}})'
         return self.client.eval(
-                f'return queue.tube.{queue}:put(...,'
-                f'{{ pri = {self._get_message_priority(message)}, ttl = {ttl} }})', message)
+            cmd.format(queue, self._get_message_priority(message), ttl),
+            message)
 
     def _get(self, queue, timeout=None):
-        res = self.client.call(f"queue.tube.{queue}:take", (1))
+        res = self.client.call("queue.tube.{}:take".format(queue), (1))
         if not res.data:
             raise Empty
         task_id = res.data[0][0]
@@ -120,7 +125,7 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         if self._has_queue(queue):
-            self.client.call(f"queue.tube.{queue}:truncate")
+            self.client.call("queue.tube.{}:truncate".format(queue))
 
     def _open(self):
         conninfo = self.connection.client
