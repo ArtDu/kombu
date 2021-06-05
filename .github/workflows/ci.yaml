@@ -30,7 +30,7 @@ jobs:
         python-version: [3.6,3.7,3.8,pypy3]
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt update && sudo apt-get install tarantool libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v2.3.4
       - name: Set up Python ${{ matrix.python-version }}
@@ -44,7 +44,9 @@ jobs:
         run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
         run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
-        
+      - name: Run tarantool integration tests
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-tarantool -- -v
+
   #################### Linters and checkers ####################
   lint:
     needs: [unittest, integration]
